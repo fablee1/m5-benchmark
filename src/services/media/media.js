@@ -1,6 +1,5 @@
 import { Router } from "express"
 import { getMedia, getReviews, writeMedia } from "./../../utils/fs.js"
-import createError from "http-errors"
 import {
   checkMediaExists,
   postMediaCoverMiddlewares,
@@ -8,6 +7,8 @@ import {
   putMediaMiddlewares,
 } from "./middlewares.js"
 import uniqid from "uniqid"
+import { generatePDFReadableStream } from "../../utils/pdf.js"
+import { pipeline } from "stream"
 
 const mediaRouter = Router()
 
@@ -88,6 +89,24 @@ mediaRouter.post("/:id/upload", postMediaCoverMiddlewares, async (req, res, next
     }
     await writeMedia(res.locals.mediaJSON)
     res.status(200).send("Succesfully uploaded picture")
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Get single media as PDF
+mediaRouter.get("/:id/pdf", checkMediaExists, async (req, res, next) => {
+  try {
+    const reviews = await getReviews()
+    res.locals.foundMedia.reviews = reviews.filter((r) => r.mediaId === req.params.id)
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=${res.locals.foundMedia.title}.pdf`
+    )
+    const pdfStream = await generatePDFReadableStream(res.locals.foundMedia)
+    pipeline(pdfStream, res, (err) => {
+      if (err) next(err)
+    })
   } catch (error) {
     next(error)
   }
