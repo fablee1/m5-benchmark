@@ -24,7 +24,25 @@ export const generatePDFReadableStream = async (media) => {
         image: "data:image/jpeg;base64," + (await getImageB64FromUrl(media.cover)),
         width: 500,
       },
+      {
+        text: media.title,
+        style: "header",
+      },
+      ...media.reviews.map((r, idx) => {
+        return {
+          text: `Review ${idx + 1}: ${r.comment}\nRate: ${r.rate}/5`,
+          margin: [20, 20],
+        }
+      }),
     ],
+    styles: {
+      header: {
+        fontSize: 24,
+        bold: true,
+        alignment: "center",
+        margin: [20, 20],
+      },
+    },
   }
   const pdfReadableStream = printer.createPdfKitDocument(docDefinition, {})
   pdfReadableStream.end()
