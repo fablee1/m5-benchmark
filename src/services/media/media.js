@@ -1,8 +1,9 @@
 import { Router } from "express"
-import { getMedia, writeMedia } from "./../../utils/fs.js"
+import { getMedia, getReviews, writeMedia } from "./../../utils/fs.js"
 import createError from "http-errors"
 import {
   checkMediaExists,
+  postMediaCoverMiddlewares,
   postMediaMiddlewares,
   putMediaMiddlewares,
 } from "./middlewares.js"
@@ -14,6 +15,8 @@ const mediaRouter = Router()
 mediaRouter.get("/", async (req, res, next) => {
   try {
     const media = await getMedia()
+    const reviews = await getReviews()
+    media.forEach((m) => (m.reviews = reviews.filter((r) => r.mediaId === m._id)))
     res.status(200).send(media)
   } catch (error) {
     next(error)
@@ -23,6 +26,8 @@ mediaRouter.get("/", async (req, res, next) => {
 // Get single Media
 mediaRouter.get("/:id", checkMediaExists, async (req, res, next) => {
   try {
+    const reviews = await getReviews()
+    res.locals.foundMedia.reviews = reviews.filter((r) => r.mediaId === req.params.id)
     res.status(200).send(res.locals.foundMedia)
   } catch (error) {
     next(error)
@@ -69,6 +74,20 @@ mediaRouter.delete("/:id", checkMediaExists, async (req, res, next) => {
     const deletedMedia = res.locals.mediaJSON.splice(res.locals.foundMediaIndex, 1)
     await writeMedia(res.locals.mediaJSON)
     res.status(200).send(deletedMedia)
+  } catch (error) {
+    next(error)
+  }
+})
+
+// Upload media cover
+mediaRouter.post("/:id/upload", postMediaCoverMiddlewares, async (req, res, next) => {
+  try {
+    res.locals.mediaJSON[res.locals.foundMediaIndex] = {
+      ...res.locals.foundMedia,
+      cover: req.file.path,
+    }
+    await writeMedia(res.locals.mediaJSON)
+    res.status(200).send("Succesfully uploaded picture")
   } catch (error) {
     next(error)
   }

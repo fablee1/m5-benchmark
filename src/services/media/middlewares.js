@@ -1,7 +1,8 @@
-import { getMedia } from "./../../utils/fs.js"
+import { getMedia, writeMedia } from "./../../utils/fs.js"
 import { validateSchemaMiddleware, validateUpdateSchemaMiddleware } from "./validation.js"
 import createError from "http-errors"
 import filterBody from "./../../utils/filterBody.js"
+import { mediaCloudinary } from "./../../configs/cloudinary.js"
 
 const mediaFields = ["title", "year", "type"]
 
@@ -23,9 +24,27 @@ const filterMediaBody = (req, res, next) => {
   next()
 }
 
+const checkMediaType = async (req, res, next) => {
+  if (req.body.cover) {
+    res.locals.mediaJSON[res.locals.foundMediaIndex] = {
+      ...res.locals.foundMedia,
+      cover: req.body.cover,
+    }
+    await writeMedia(res.locals.mediaJSON)
+    res.status(200).send("Succesfully added picture")
+  } else {
+    next()
+  }
+}
+
 export const postMediaMiddlewares = [filterMediaBody, ...validateSchemaMiddleware]
 export const putMediaMiddlewares = [
   checkMediaExists,
   filterMediaBody,
   ...validateUpdateSchemaMiddleware,
+]
+export const postMediaCoverMiddlewares = [
+  checkMediaExists,
+  checkMediaType,
+  mediaCloudinary,
 ]
